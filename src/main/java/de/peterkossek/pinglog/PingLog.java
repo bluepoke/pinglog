@@ -19,7 +19,8 @@ public class PingLog {
         options.addRequiredOption("h", "host", true, "Host to ping");
         options.addOption("i", "interval", true, "Interval in seconds, optional, default is "+DEFAULT_INTERVAL);
         options.addOption("f", "file", true, "Output file path, optional");
-        options.addOption("?", "help", false, "Print this helpt text");
+        options.addOption("?", "help", false, "Print this help text");
+        options.addOption("e", "errorsOnly", false, "Log only errors");
         if (args.length == 0) {
             printUsage(options);
             return;
@@ -36,6 +37,7 @@ public class PingLog {
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
         int interval = Integer.parseInt(cli.getOptionValue("i", DEFAULT_INTERVAL)) * 1000;
         String host = cli.getOptionValue("h");
+        boolean logOnlyErrors = cli.hasOption("e");
         BufferedWriter bw = null;
         if (cli.hasOption("f")) {
             String filePath = cli.getOptionValue("f");
@@ -45,24 +47,35 @@ public class PingLog {
                 System.err.println("Could not write to file "+filePath);
             }
         }
+        boolean newLineBeforeMessage = false;
         while (true) {
             String timestamp = sdf.format(new Date());
             String message = "";
+            boolean reachable = false;
             try {
-                boolean reachable = InetAddress.getByName(host).isReachable(200);
-                message = timestamp + " " + host + " " + reachable;
+                reachable = InetAddress.getByName(host).isReachable(200);
             } catch (IOException e) {
-                message = timestamp + " " + host + " error";
+                // do nothing
             }
-            System.out.println(message);
-            if (bw != null) {
-                try {
-                    bw.append(message);
-                    bw.newLine();
-                    bw.flush();
-                } catch (IOException e) {
-                    System.err.println("Could not write to file!");
+            if (logOnlyErrors && reachable) {
+                System.out.print(".");
+                newLineBeforeMessage = true;
+            } else {
+                message = timestamp + " " + host + " " + reachable;
+                if (newLineBeforeMessage) {
+                    System.out.println();
                 }
+                System.out.println(message);
+                if (bw != null) {
+                    try {
+                        bw.append(message);
+                        bw.newLine();
+                        bw.flush();
+                    } catch (IOException e) {
+                        System.err.println("Could not write to file!");
+                    }
+                }
+                newLineBeforeMessage = false;
             }
             Thread.sleep(interval);
         }
