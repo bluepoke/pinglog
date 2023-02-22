@@ -59,6 +59,7 @@ public class PingLog {
                 try {
                     bw.append(message);
                     bw.newLine();
+                    bw.flush();
                 } catch (IOException e) {
                     System.err.println("Could not write to file!");
                 }
